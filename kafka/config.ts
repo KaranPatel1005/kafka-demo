@@ -12,7 +12,7 @@ function getEnvVar(name: string): string {
 
 export const kafkaConfig = {
   clientId: "kafka-gateway",
-  brokers: ["localhost:9092"],
+  brokers: ["ec2-18-212-21-248.compute-1.amazonaws.com:9092"],
 };
 
 export const kafkaGroupId = "kafka_hub_group";
