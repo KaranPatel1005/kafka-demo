@@ -1,0 +1,97 @@
+version: "3.8"
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 1000
+    ports:
+      - 1000:1000
+    depends_on:
+      kafka-broker-1:
+        condition: service_healthy
+      kafka-broker-2:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    networks:
+      - kafka_network_demo
+
+  zookeeper-demo:
+    container_name: zookeeper-demo
+    image: "bitnami/zookeeper:latest"
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/localhost/2181'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
+    networks:
+      - kafka_network_demo
+
+  kafka-broker-1:
+    container_name: kafka-broker-1
+    image: "bitnami/kafka:latest"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data_1:/bitnami/kafka
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-demo:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-broker-1:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      zookeeper-demo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kafka_network_demo
+
+  kafka-broker-2:
+    container_name: kafka-broker-2
+    image: "bitnami/kafka:latest"
+    ports:
+      - "9093:9093"
+    volumes:
+      - kafka_data_2:/bitnami/kafka
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-demo:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-broker-2:9093
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      zookeeper-demo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9093"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kafka_network_demo
+
+volumes:
+  kafka_data_1:
+    driver: local
+  kafka_data_2:
+    driver: local
+  zookeeper_data:
+    driver: local
+
+networks:
+  kafka_network_demo:
+    name: kafka_network_demo
